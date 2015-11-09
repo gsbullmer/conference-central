@@ -70,6 +70,7 @@ SESS_DEFAULTS = {
     "highlights": "No highlights",
     "speakerKey": [ "Default", "Speaker" ],
     "duration": 0,
+    "typeOfSession": TypeOfSession.NOT_SPECIFIED,
 }
 
 OPERATORS = {
@@ -101,6 +102,12 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
 SESS_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeConferenceKey=messages.StringField(1),
+)
+
+SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    typeOfSession=messages.StringField(2),
 )
 
 SESS_POST_REQUEST = endpoints.ResourceContainer(
@@ -371,6 +378,9 @@ class ConferenceApi(remote.Service):
                 # convert Date to date string; just copy others
                 if field.name in ('date', 'startTime'):
                     setattr(sf, field.name, str(getattr(sess, field.name)))
+                elif field.name == "typeOfSession":
+                    setattr(sf, field.name,
+                            getattr(TypeOfSession, getattr(sess, field.name)))
                 else:
                     setattr(sf, field.name, getattr(sess, field.name))
             elif field.name == "websafeKey":
@@ -406,6 +416,8 @@ class ConferenceApi(remote.Service):
         # convert time from string to Time object
         if data['startTime']:
             data['startTime'] = datetime.strptime(data['startTime'], "%H:%M:%S").time()
+        if data['typeOfSession']:
+            data['typeOfSession'] = str(data['typeOfSession'])
 
         # generate Profile Key based on user ID and Conference
         # ID based on Profile key get Conference key from ID
@@ -418,6 +430,14 @@ class ConferenceApi(remote.Service):
         sess = Session(**data)
         sess.put()
         return self._copySessionToForm(sess)
+
+
+    @endpoints.method(SESS_POST_REQUEST, SessionForm,
+            path='conference/{websafeConferenceKey}/session',
+            http_method='POST', name='createSession')
+    def createSession(self, request):
+        """Create new session in conference."""
+        return self._createSessionObject(request)
 
 
     @endpoints.method(SESS_GET_REQUEST, SessionForms,
@@ -444,12 +464,32 @@ class ConferenceApi(remote.Service):
         )
 
 
-    @endpoints.method(SESS_POST_REQUEST, SessionForm,
-            path='conference/{websafeConferenceKey}/session',
-            http_method='POST', name='createSession')
-    def createSession(self, request):
-        """Create new session in conference."""
-        return self._createSessionObject(request)
+    @endpoints.method(SESS_TYPE_GET_REQUEST, SessionForms,
+            path='conference/{websafeConferenceKey}/{typeOfSession}',
+            http_method='POST', name='getConferenceSessionsByType')
+    def getConferenceSessionsByType(self, request):
+        """Return conference Sessions of the requested type (by
+        websafeConferenceKey and typeOfSession)."""
+        # make sure user is authed
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % \
+                request.websafeConferenceKey)
+
+        # create ancestor query for all key matches for this conference
+        sessions = Session.query(
+            ancestor=ndb.Key(Conference, request.websafeConferenceKey))
+        sessions = sessions.filter(
+            Session.typeOfSession == request.typeOfSession)
+        # return set of SessionForm objects per Conference
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
 
 # - - - Profile objects - - - - - - - - - - - - - - - - - - -
 
@@ -540,6 +580,28 @@ class ConferenceApi(remote.Service):
         return sf
 
 
+    def _createSpeakerObject(self, request):
+        """Create or update Speaker object, returning SpeakerForm."""
+        # make sure user is authed
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        # get Speaker from datastore
+        s_key = ndb.Key(Speaker, request.email)
+        speaker = s_key.get()
+        # create new Speaker if not there
+        if not speaker:
+            speaker = Speaker(
+                key = s_key,
+                displayName = request.displayName,
+                email= request.email,
+            )
+            speaker.put()
+
+        return speaker      # return Speaker
+
+
     def _getSpeaker(self, email):
         """
         Return user Speaker from datastore, creating new one if
@@ -583,11 +645,11 @@ class ConferenceApi(remote.Service):
         return self._copySpeakerToForm(spkr)
 
 
-    @endpoints.method(SPKR_GET_REQUEST, SpeakerForm,
-            path='speaker', http_method='GET', name='getSpeaker')
-    def getSpeaker(self, request):
+    @endpoints.method(SpeakerForm, SpeakerForm,
+            path='speaker', http_method='GET', name='createSpeaker')
+    def createSpeaker(self, request):
         """Return Speaker."""
-        return self._doSpeaker(request)
+        return self._createSpeakerObject(request)
 
 
     @endpoints.method(SPKR_POST_REQUEST, SpeakerForm,
