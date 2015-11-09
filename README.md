@@ -39,7 +39,7 @@ You will have to submit your app ID, and text for the parts of the project that 
 - [ ] [Task 1: Add Sessions to a Conference][11]
   - [ ] [Define Endpoints methods][12]
     - [x] `getConferenceSessions(websafeConferenceKey)`
-    - [ ] `getConferenceSessionsByType(websafeConferenceKey, typeOfSession)`
+    - [x] `getConferenceSessionsByType(websafeConferenceKey, typeOfSession)`
     - [ ] `getSessionsBySpeaker(speaker)`
     - [x] `createSession(SessionForm, websafeConferenceKey)`
   - [x] [Define Session class and SessionForm][13]

@@ -39,7 +39,6 @@ from models import TeeShirtSize
 from models import Speaker
 from models import SpeakerForm
 from models import SpeakerForms
-from models import SpeakerMiniForm
 from models import Session
 from models import SessionForm
 from models import SessionForms
@@ -122,7 +121,7 @@ SPKR_GET_REQUEST = endpoints.ResourceContainer(
 
 SPKR_POST_REQUEST = endpoints.ResourceContainer(
     SpeakerForm,
-    save=messages.BooleanField(1),
+    email=messages.StringField(1),
 )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -580,38 +579,11 @@ class ConferenceApi(remote.Service):
         return sf
 
 
-    def _createSpeakerObject(self, request):
-        """Create or update Speaker object, returning SpeakerForm."""
-        # make sure user is authed
-        user = endpoints.get_current_user()
-        if not user:
-            raise endpoints.UnauthorizedException('Authorization required')
-
-        # get Speaker from datastore
-        s_key = ndb.Key(Speaker, request.email)
-        speaker = s_key.get()
-        # create new Speaker if not there
-        if not speaker:
-            speaker = Speaker(
-                key = s_key,
-                displayName = request.displayName,
-                email= request.email,
-            )
-            speaker.put()
-
-        return speaker      # return Speaker
-
-
     def _getSpeaker(self, email):
         """
         Return user Speaker from datastore, creating new one if
         non-existent.
         """
-        # make sure user is authed
-        user = endpoints.get_current_user()
-        if not user:
-            raise endpoints.UnauthorizedException('Authorization required')
-
         # get Speaker from datastore
         s_key = ndb.Key(Speaker, email)
         speaker = s_key.get()
@@ -624,39 +596,42 @@ class ConferenceApi(remote.Service):
             )
             speaker.put()
 
-        return speaker      # return Speaker
+        # return Speaker
+        return speaker
 
 
-    def _doSpeaker(self, email, save_request=None):
+    @ndb.transactional()
+    def _doSpeaker(self, request, update=False):
         """Get Speaker and return to user, possibly updating it first."""
         # get Speaker
-        spkr = self._getSpeaker(email)
+        spkr = self._getSpeaker(request.email)
 
         # if saveProfile(), process user-modifyable fields
-        if save_request:
-            for field in ('displayName'):
-                if hasattr(request, field):
-                    val = getattr(request, field)
-                    if val:
-                        setattr(spkr, field, str(val))
-                        spkr.put()
+        if update:
+            for field in request.all_fields():
+                data = getattr(request, field.name)
+                # only copy fields where we get data
+                if data not in (None, []):
+                    # write to Conference object
+                    setattr(spkr, field.name, data)
+            spkr.put()
 
         # return SpeakerForm
         return self._copySpeakerToForm(spkr)
 
 
-    @endpoints.method(SpeakerForm, SpeakerForm,
-            path='speaker', http_method='GET', name='createSpeaker')
-    def createSpeaker(self, request):
+    @endpoints.method(SPKR_GET_REQUEST, SpeakerForm,
+            path='speaker', http_method='GET', name='getSpeaker')
+    def getSpeaker(self, request):
         """Return Speaker."""
-        return self._createSpeakerObject(request)
+        return self._doSpeaker(request)
 
 
     @endpoints.method(SPKR_POST_REQUEST, SpeakerForm,
-            path='speaker', http_method='POST', name='updateSpeaker')
+            path='speaker', http_method='PUT', name='updateSpeaker')
     def updateSpeaker(self, request):
         """Update & return Speaker."""
-        return self._doSpeaker(request)
+        return self._doSpeaker(request, update=True)
 
 
 # - - - Announcements - - - - - - - - - - - - - - - - - - - -

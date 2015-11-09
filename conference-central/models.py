@@ -116,11 +116,6 @@ class Speaker(ndb.Model):
 class SpeakerForm(messages.Message):
     """SpeakerForm -- Speaker outbound form message"""
     displayName = messages.StringField(1)
-    email = messages.StringField(2)
-
-class SpeakerMiniForm(messages.Message):
-    """SpeakerMiniForm -- Speaker outbound form message"""
-    displayName = messages.StringField(1)
 
 class SpeakerForms(messages.Message):
     """SpeakerForms -- multiple Speaker outbound form message"""
