@@ -36,6 +36,12 @@ from models import ConferenceForms
 from models import ConferenceQueryForm
 from models import ConferenceQueryForms
 from models import TeeShirtSize
+from models import Speaker
+from models import SpeakerForm
+from models import SpeakerMiniForm
+from models import Session
+from models import SessionForm
+from models import TypeOfSession
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -56,6 +62,11 @@ DEFAULTS = {
     "maxAttendees": 0,
     "seatsAvailable": 0,
     "topics": [ "Default", "Topic" ],
+}
+
+SESS_DEFAULTS = {
+    "highlights": "No highlights",
+    "duration": 0,
 }
 
 OPERATORS = {
@@ -82,6 +93,26 @@ CONF_GET_REQUEST = endpoints.ResourceContainer(
 CONF_POST_REQUEST = endpoints.ResourceContainer(
     ConferenceForm,
     websafeConferenceKey=messages.StringField(1),
+)
+
+SESS_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeSessionKey=messages.StringField(1),
+)
+
+SESS_POST_REQUEST = endpoints.ResourceContainer(
+    SessionForm,
+    websafeSessionKey=messages.StringField(1),
+)
+
+SPKR_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    email=messages.StringField(1),
+)
+
+SPKR_POST_REQUEST = endpoints.ResourceContainer(
+    SpeakerForm,
+    save=messages.BooleanField(1),
 )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -327,6 +358,54 @@ class ConferenceApi(remote.Service):
                 conferences]
         )
 
+# - - - Session objects - - - - - - - - - - - - - - - - - - -
+
+    def _createSessionObject(self, request):
+        """Create or update Session object, returning SessionForm/request."""
+        # preload necessary data items
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
+        if not request.name:
+            raise endpoints.BadRequestException("Session 'name' field required")
+
+        # copy SessionForm/ProtoRPC Message into dict
+        data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+
+        # add default values for those missing (both data model & outbound Message)
+        for df in SESS_DEFAULTS:
+            if data[df] in (None, []):
+                data[df] = SESS_DEFAULTS[df]
+                setattr(request, df, SESS_DEFAULTS[df])
+
+        # convert date from string to Date object
+        if data['date']:
+            data['date'] = datetime.strptime(data['date'], "%Y-%m-%d").date()
+        # convert time from string to Time object
+        if data['startTime']:
+            data['startTime'] = datetime.strptime(data['startTime'], "%H:%M:%S").time()
+
+        # generate Profile Key based on user ID and Conference
+        # ID based on Profile key get Conference key from ID
+        p_key = ndb.Key(Profile, user_id)
+        c_id = Conference.allocate_ids(size=1, parent=p_key)[0]
+        c_key = ndb.Key(Conference, c_id, parent=p_key)
+        data['key'] = c_key
+        data['organizerUserId'] = request.organizerUserId = user_id
+
+        # create Session & return (modified) SessionForm
+        Session(**data).put()
+        return request
+
+
+    @endpoints.method(SessionForm, SessionForm,
+            path='conference/{websafeConferenceKey}/session',
+            http_method='POST', name='createSession')
+    def createSession(self, request):
+        """Create new session in conference."""
+        return self._createSessionObject(request)
 
 # - - - Profile objects - - - - - - - - - - - - - - - - - - -
 
@@ -403,6 +482,75 @@ class ConferenceApi(remote.Service):
     def saveProfile(self, request):
         """Update & return user profile."""
         return self._doProfile(request)
+
+
+# - - - Speaker objects - - - - - - - - - - - - - - - - - - -
+
+    def _copySpeakerToForm(self, spkr):
+        """Copy relevant fields from Speaker to SpeakerForm."""
+        sf = SpeakerForm()
+        for field in sf.all_fields():
+            if hasattr(spkr, field.name):
+                setattr(sf, field.name, getattr(spkr, field.name))
+        sf.check_initialized()
+        return sf
+
+
+    def _getSpeaker(self, email):
+        """
+        Return user Speaker from datastore, creating new one if
+        non-existent.
+        """
+        # make sure user is authed
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        # get Speaker from datastore
+        s_key = ndb.Key(Speaker, email)
+        speaker = s_key.get()
+        # create new Speaker if not there
+        if not speaker:
+            speaker = Speaker(
+                key = s_key,
+                displayName = email,
+                email= email,
+            )
+            speaker.put()
+
+        return speaker      # return Speaker
+
+
+    def _doSpeaker(self, email, save_request=None):
+        """Get Speaker and return to user, possibly updating it first."""
+        # get Speaker
+        spkr = self._getSpeaker(email)
+
+        # if saveProfile(), process user-modifyable fields
+        if save_request:
+            for field in ('displayName'):
+                if hasattr(request, field):
+                    val = getattr(request, field)
+                    if val:
+                        setattr(spkr, field, str(val))
+                        spkr.put()
+
+        # return SpeakerForm
+        return self._copySpeakerToForm(spkr)
+
+
+    @endpoints.method(SPKR_GET_REQUEST, SpeakerForm,
+            path='speaker', http_method='GET', name='getSpeaker')
+    def getSpeaker(self, request):
+        """Return Speaker."""
+        return self._doSpeaker(request)
+
+
+    @endpoints.method(SPKR_POST_REQUEST, SpeakerForm,
+            path='speaker', http_method='POST', name='updateSpeaker')
+    def updateSpeaker(self, request):
+        """Update & return Speaker."""
+        return self._doSpeaker(request)
 
 
 # - - - Announcements - - - - - - - - - - - - - - - - - - - -
