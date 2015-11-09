@@ -38,11 +38,11 @@ You will have to submit your app ID, and text for the parts of the project that 
 
 - [ ] [Task 1: Add Sessions to a Conference][11]
   - [ ] [Define Endpoints methods][12]
-    - [ ] `getConferenceSessions(websafeConferenceKey)`
+    - [x] `getConferenceSessions(websafeConferenceKey)`
     - [ ] `getConferenceSessionsByType(websafeConferenceKey, typeOfSession)`
     - [ ] `getSessionsBySpeaker(speaker)`
-    - [ ] `createSession(SessionForm, websafeConferenceKey)`
-  - [ ] [Define Session class and SessionForm][13]
+    - [x] `createSession(SessionForm, websafeConferenceKey)`
+  - [x] [Define Session class and SessionForm][13]
   - [ ] [Explain your design choices][14]
 - [ ] [Task 2: Add Sessions to User Wishlist][21]
   - [ ] [Define Endpoints methods][22]
