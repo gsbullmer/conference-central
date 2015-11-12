@@ -98,8 +98,8 @@ CONF_POST_REQUEST = endpoints.ResourceContainer(
     websafeConferenceKey=messages.StringField(1),
 )
 
-SESS_GET_REQUEST = endpoints.ResourceContainer(
-    message_types.VoidMessage,
+SESS_POST_REQUEST = endpoints.ResourceContainer(
+    SessionForm,
     websafeConferenceKey=messages.StringField(1),
 )
 
@@ -114,19 +114,14 @@ SESS_SPKR_GET_REQUEST = endpoints.ResourceContainer(
     speakerKey=messages.StringField(1),
 )
 
-SESS_POST_REQUEST = endpoints.ResourceContainer(
-    SessionForm,
-    websafeConferenceKey=messages.StringField(1),
-)
-
 SPKR_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
-    email=messages.StringField(1),
+    speakerKey=messages.StringField(1),
 )
 
 SPKR_POST_REQUEST = endpoints.ResourceContainer(
     SpeakerForm,
-    email=messages.StringField(1),
+    speakerKey=messages.StringField(1),
 )
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -408,6 +403,7 @@ class ConferenceApi(remote.Service):
         # copy SessionForm/ProtoRPC Message into dict
         data = {field.name: getattr(request, field.name) for field in request.all_fields()}
         del data['websafeConferenceKey']
+        del data['websafeKey']
 
         # add default values for those missing (both data model & outbound Message)
         for df in SESS_DEFAULTS:
@@ -439,12 +435,64 @@ class ConferenceApi(remote.Service):
         s_id = Session.allocate_ids(size=1, parent=c_key)[0]
         s_key = ndb.Key(Session, s_id, parent=c_key)
         data['key'] = s_key
+        data['organizerUserId'] = request.organizerUserId = user_id
 
         # create Session & return (modified) SessionForm
         sess = Session(**data)
         sess.put()
         return self._copySessionToForm(sess)
 
+
+    # @ndb.transactional()
+    # def _updateSessionObject(self, request):
+    #     user = endpoints.get_current_user()
+    #     if not user:
+    #         raise endpoints.UnauthorizedException('Authorization required')
+    #     user_id = getUserId(user)
+    #
+    #     # copy SessionForm/ProtoRPC Message into dict
+    #     data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+    #
+    #     # update existing conference
+    #     sess = ndb.Key(urlsafe=request.websafeSessionKey).get()
+    #     # check that conference exists
+    #     if not sess:
+    #         raise endpoints.NotFoundException(
+    #             'No session found with key: %s' % request.websafeSessionKey)
+    #
+    #     # check that user is owner
+    #     if user_id != sess.organizerUserId:
+    #         raise endpoints.ForbiddenException(
+    #             'Only the owner can update the session.')
+    #
+    #     # Not getting all the fields, so don't create a new object; just
+    #     # copy relevant fields from SessionForm to Session object
+    #     for field in request.all_fields():
+    #         data = getattr(request, field.name)
+    #         # only copy fields where we get data
+    #         if data not in (None, []):
+    #             # check if Speaker object exists or else create one
+    #             if data['speakerKeys']:
+    #                 for key in data['speakerKeys']:
+    #                     self._getSpeaker(key)
+    #
+    #             # convert date from string to Date object
+    #             if data['date']:
+    #                 data['date'] = datetime.strptime(data['date'], "%Y-%m-%d").date()
+    #
+    #             # convert time from string to Time object
+    #             if data['startTime']:
+    #                 data['startTime'] = datetime.strptime(data['startTime'], "%H:%M:%S").time()
+    #
+    #             # stringify typeOfSession
+    #             if data['typeOfSession']:
+    #                 data['typeOfSession'] = str(data['typeOfSession'])
+    #             # write to Conference object
+    #             setattr(sess, field.name, data)
+    #     sess.put()
+    #     prof = ndb.Key(Profile, user_id).get()
+    #     return self._copySessionToForm(sess, getattr(prof, 'displayName'))
+    #
 
     @endpoints.method(SESS_POST_REQUEST, SessionForm,
             path='conference/{websafeConferenceKey}/session',
@@ -454,9 +502,17 @@ class ConferenceApi(remote.Service):
         return self._createSessionObject(request)
 
 
-    @endpoints.method(SESS_GET_REQUEST, SessionForms,
+    # @endpoints.method(SESS_PUT_REQUEST, SessionForm,
+    #         path='session/{websafeSessionKey}',
+    #         http_method='PUT', name='updateSession')
+    # def updateSession(self, request):
+    #     """Update session w/provided fields & return w/updated info."""
+    #     return self._updateSessionObject(request)
+
+
+    @endpoints.method(CONF_GET_REQUEST, SessionForms,
             path='conference/{websafeConferenceKey}/sessions',
-            http_method='POST', name='getConferenceSessions')
+            http_method='GET', name='getConferenceSessions')
     def getConferenceSessions(self, request):
         """Return conference Sessions (by websafeConferenceKey)."""
         # make sure user is authed
@@ -645,7 +701,7 @@ class ConferenceApi(remote.Service):
     def _doSpeaker(self, request, update=False):
         """Get Speaker and return to user, possibly updating it first."""
         # get Speaker
-        spkr = self._getSpeaker(request.email)
+        spkr = self._getSpeaker(request.speakerKey)
 
         # if saveProfile(), process user-modifyable fields
         if update:

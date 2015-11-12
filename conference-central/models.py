@@ -130,6 +130,7 @@ class Session(ndb.Model):
     typeOfSession = ndb.StringProperty(default='NOT_SPECIFIED')
     date = ndb.DateProperty()
     startTime = ndb.TimeProperty()
+    organizerUserId = ndb.StringProperty()
 
 class SessionForm(messages.Message):
     """SessionForm -- Session outbound form message"""
@@ -140,6 +141,8 @@ class SessionForm(messages.Message):
     typeOfSession = messages.EnumField('TypeOfSession', 5)
     date = messages.StringField(6) # DateField()
     startTime = messages.StringField(7) # TimeField()
+    organizerUserId = messages.StringField(8)
+    websafeKey = messages.StringField(9)
 
 class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""

@@ -36,14 +36,14 @@ You will have to submit your app ID, and text for the parts of the project that 
 
 ## Tasks
 
-- [ ] [Task 1: Add Sessions to a Conference][11]
+- [x] [Task 1: Add Sessions to a Conference][11]
   - [x] [Define Endpoints methods][12]
     - [x] `getConferenceSessions(websafeConferenceKey)`
     - [x] `getConferenceSessionsByType(websafeConferenceKey, typeOfSession)`
     - [x] `getSessionsBySpeaker(speaker)`
     - [x] `createSession(SessionForm, websafeConferenceKey)`
   - [x] [Define Session class and SessionForm][13]
-  - [ ] [Explain your design choices][14]
+  - [x] [Explain your design choices][14]
 - [ ] [Task 2: Add Sessions to User Wishlist][21]
   - [ ] [Define Endpoints methods][22]
     - [ ] `addSessionToWishlist(SessionKey)`
@@ -90,7 +90,9 @@ Ideally, create the session as a child of the conference.
 
 #### Explain your design choices
 
-Explain in a couple of paragraphs your design choices for session and speaker implementation.
+Session entities belong to a Conference object. Each has a name, highlights, list of speaker keys, a duration, a session type, session date, start time of the session, and user ID of the creator. The speaker keys should be email addresses since those are unique identifiers. Endpoints available allow a user to create a session, get all sessions of a conference via a websafe conference key, get all sessions of a conference of a certain type via a websafe conference key and type of session, and get all sessions by a certain speaker via speaker's email address.
+
+Speakers are entities. Each contains the speaker's display name and email address. Endpoints available allow a user to get a speaker, and update an existing speaker's display name. When a user attempts to retrieve a speaker and it doesn't exist, one is created, setting the display name equal to the email address supplied.
 
 ### Task 2: Add Sessions to User Wishlist
 
