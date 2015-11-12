@@ -67,7 +67,7 @@ DEFAULTS = {
 
 SESS_DEFAULTS = {
     "highlights": "No highlights",
-    "speakerKey": [ "Default", "Speaker" ],
+    "speakerKeys": [ "Default", "Speaker" ],
     "duration": 0,
     "typeOfSession": TypeOfSession.NOT_SPECIFIED,
 }
@@ -107,6 +107,11 @@ SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     websafeConferenceKey=messages.StringField(1),
     typeOfSession=messages.StringField(2),
+)
+
+SESS_SPKR_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    speakerKey=messages.StringField(1),
 )
 
 SESS_POST_REQUEST = endpoints.ResourceContainer(
@@ -331,9 +336,10 @@ class ConferenceApi(remote.Service):
 
             # Every operation except "=" is an inequality
             if filtr["operator"] != "=":
-                # check if inequality operation has been used in previous filters
-                # disallow the filter if inequality was performed on a different field before
-                # track the field on which the inequality operation is performed
+                # check if inequality operation has been used in previous
+                # filters disallow the filter if inequality was performed
+                # on a different field before track the field on which the
+                # inequality operation is performed
                 if inequality_field and inequality_field != filtr["field"]:
                     raise endpoints.BadRequestException("Inequality filter is allowed on only one field.")
                 else:
@@ -409,12 +415,21 @@ class ConferenceApi(remote.Service):
                 data[df] = SESS_DEFAULTS[df]
                 setattr(request, df, SESS_DEFAULTS[df])
 
+        # check if Speaker object exists or else create one
+        if data['speakerKeys']:
+            for key in data['speakerKeys']:
+                self._getSpeaker(key)
+
         # convert date from string to Date object
         if data['date']:
             data['date'] = datetime.strptime(data['date'], "%Y-%m-%d").date()
+
         # convert time from string to Time object
         if data['startTime']:
-            data['startTime'] = datetime.strptime(data['startTime'], "%H:%M:%S").time()
+            data['startTime'] = datetime.strptime(
+                                    data['startTime'], "%H:%M:%S").time()
+
+        # stringify typeOfSession
         if data['typeOfSession']:
             data['typeOfSession'] = str(data['typeOfSession'])
 
@@ -465,7 +480,7 @@ class ConferenceApi(remote.Service):
 
     @endpoints.method(SESS_TYPE_GET_REQUEST, SessionForms,
             path='conference/{websafeConferenceKey}/{typeOfSession}',
-            http_method='POST', name='getConferenceSessionsByType')
+            http_method='GET', name='getConferenceSessionsByType')
     def getConferenceSessionsByType(self, request):
         """Return conference Sessions of the requested type (by
         websafeConferenceKey and typeOfSession)."""
@@ -486,6 +501,32 @@ class ConferenceApi(remote.Service):
         sessions = sessions.filter(
             Session.typeOfSession == request.typeOfSession)
         # return set of SessionForm objects per Conference
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+
+    @endpoints.method(SESS_SPKR_GET_REQUEST, SessionForms,
+            path='session/{speakerKey}',
+            http_method='GET', name='getSessionsBySpeaker')
+    def getSessionsBySpeaker(self, request):
+        """Return Sessions with the requested requested Speaker (by
+        speakerKey (email))."""
+        # make sure user is authed
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        spkr = ndb.Key(Speaker, request.speakerKey).get()
+        if not spkr:
+            raise endpoints.NotFoundException(
+                'No Speaker found with key: %s' % \
+                request.speakerKey)
+
+        sessions = Session.query()
+        sessions = sessions.filter(
+            Session.speakerKeys == request.speakerKey)
+        # return set of SessionForm objects per Speaker
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -612,7 +653,7 @@ class ConferenceApi(remote.Service):
                 data = getattr(request, field.name)
                 # only copy fields where we get data
                 if data not in (None, []):
-                    # write to Conference object
+                    # write to Speaker object
                     setattr(spkr, field.name, data)
             spkr.put()
 
