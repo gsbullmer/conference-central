@@ -44,10 +44,10 @@ You will have to submit your app ID, and text for the parts of the project that 
     - [x] `createSession(SessionForm, websafeConferenceKey)`
   - [x] [Define Session class and SessionForm][13]
   - [x] [Explain your design choices][14]
-- [ ] [Task 2: Add Sessions to User Wishlist][21]
-  - [ ] [Define Endpoints methods][22]
-    - [ ] `addSessionToWishlist(SessionKey)`
-    - [ ] `getSessionsInWishlist()`
+- [x] [Task 2: Add Sessions to User Wishlist][21]
+  - [x] [Define Endpoints methods][22]
+    - [x] `addSessionToWishlist(SessionKey)`
+    - [x] `getSessionsInWishlist()`
 - [ ] [Task 3: Work on indexes and queries][31]
   - [ ] [Create indexes][32]
   - [ ] [Come up with 2 additional queries][33]
