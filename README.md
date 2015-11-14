@@ -117,6 +117,9 @@ Make sure the indexes support the type of queries required by the new Endpoints 
 
 Think about other types of queries that would be useful for this application. Describe the purpose of 2 new queries and write the code that would perform them.
 
+- `getConferenceAttendees(websafeConferenceKey)`
+Query for all users registered for a particular conference
+
 #### Solve the following query related problem
 
 Let's say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?

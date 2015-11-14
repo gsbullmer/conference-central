@@ -28,6 +28,7 @@ from models import ConflictException
 from models import Profile
 from models import ProfileMiniForm
 from models import ProfileForm
+from models import ProfileForms
 from models import StringMessage
 from models import BooleanMessage
 from models import Conference
@@ -924,6 +925,26 @@ class ConferenceApi(remote.Service):
         # return set of ConferenceForm objects per Conference
         return ConferenceForms(items=[self._copyConferenceToForm(conf, names[conf.organizerUserId])\
          for conf in conferences]
+        )
+
+
+    @endpoints.method(CONF_GET_REQUEST, ProfileForms,
+            path='conference_attendees/{websafeConferenceKey}',
+            http_method='GET', name='getConferenceAttendees')
+    def getConferenceAttendees(self, request):
+        """Get list of users registered for the conference."""
+        wsck = request.websafeConferenceKey
+        conf = ndb.Key(urlsafe=wsck).get()
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % wsck)
+
+        profs = Profile.query()
+        profs = profs.filter(Profile.conferenceKeysToAttend == wsck)
+        profs = profs.order(Profile.displayName)
+
+        return ProfileForms(
+            items=[self._copyProfileToForm(prof) for prof in profs]
         )
 
 

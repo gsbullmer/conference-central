@@ -42,6 +42,10 @@ class ProfileForm(messages.Message):
     conferenceKeysToAttend = messages.StringField(4, repeated=True)
     sessionKeysWishlist = messages.StringField(5, repeated=True)
 
+class ProfileForms(messages.Message):
+    """ProfileForms -- multiple ProfileForm outbound form message"""
+    items = messages.MessageField(ProfileForm, 1, repeated=True)
+
 class StringMessage(messages.Message):
     """StringMessage-- outbound (single) string message"""
     data = messages.StringField(1, required=True)
