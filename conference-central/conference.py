@@ -114,11 +114,6 @@ SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
     typeOfSession=messages.StringField(2),
 )
 
-SESS_SPKR_GET_REQUEST = endpoints.ResourceContainer(
-    message_types.VoidMessage,
-    speakerKey=messages.StringField(1),
-)
-
 SPKR_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     speakerKey=messages.StringField(1),
@@ -441,6 +436,7 @@ class ConferenceApi(remote.Service):
         s_key = ndb.Key(Session, s_id, parent=c_key)
         data['key'] = s_key
         data['organizerUserId'] = request.organizerUserId = user_id
+        data['conferenceKey'] = c_key.urlsafe()
 
         # create Session & return (modified) SessionForm
         sess = Session(**data)
@@ -567,7 +563,7 @@ class ConferenceApi(remote.Service):
         )
 
 
-    @endpoints.method(SESS_SPKR_GET_REQUEST, SessionForms,
+    @endpoints.method(SPKR_GET_REQUEST, SessionForms,
             path='session/{speakerKey}',
             http_method='GET', name='getSessionsBySpeaker')
     def getSessionsBySpeaker(self, request):
@@ -814,24 +810,28 @@ class ConferenceApi(remote.Service):
         return BooleanMessage(data=retval)
 
 
-    @endpoints.method(message_types.VoidMessage, SessionForms,
+    @endpoints.method(CONF_GET_REQUEST, SessionForms,
             path='conference/{websafeConferenceKey}/wishlist',
             http_method='GET', name='getSessionsInWishlist')
     def getSessionsInWishlist(self, request):
         """Get list of sessions that user has added to wishlist."""
         prof = self._getProfileFromUser() # get user Profile
-        conf = ndb.Key(websafe=request.websafeConferenceKey).get()
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
         if not conf:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % \
                 request.websafeConferenceKey)
 
+        # get session keys in user wishlist
         sess_keys = [ndb.Key(urlsafe=wssk) for wssk in prof.sessionKeysWishlist]
-        sessions = ndb.get_multi(sess_keys)
-        sessions = Session.query(ancestor=ndb.Key(Conference,
-                                 request.websafeConferenceKey))
 
-        # return set of ConferenceForm objects per Conference
+        # Query Sessions for a particular conference
+        sessions = Session.query(ancestor=ndb.Key(
+                                 Conference, request.websafeConferenceKey))
+        # Filter sessions by only those in user wishlist
+        sessions = sessions.filter(Session.key.IN(sess_keys))
+
+        # return set of SessionForm objects per Session
         return SessionForms(items=[self._copySessionToForm(sess)\
             for sess in sessions])
 
