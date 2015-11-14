@@ -104,7 +104,7 @@ Users should be able to mark some sessions that they are interested in and retri
 - `addSessionToWishlist(SessionKey)`
 Adds the session to the user's list of sessions they are interested in attending
 _You can decide if they can only add conference they have registered to attend or if the wishlist is open to all conferences._
-- `getSessionsInWishlist()`
+- `getSessionsInWishlist(websafeConferenceKey)`
 Query for all the sessions in a conference that the user is interested in
 
 ### Task 3: Work on indexes and queries
@@ -119,6 +119,8 @@ Think about other types of queries that would be useful for this application. De
 
 - `getConferenceAttendees(websafeConferenceKey)`
 Query for all users registered for a particular conference
+- `getSessionsUnderDuration(websafeConferenceKey, duration)`
+Query for all sessions of a conference less than or equal to a specified duration
 
 #### Solve the following query related problem
 

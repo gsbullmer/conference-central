@@ -115,6 +115,12 @@ SESS_TYPE_GET_REQUEST = endpoints.ResourceContainer(
     typeOfSession=messages.StringField(2),
 )
 
+SESS_DUR_GET_REQUEST = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    websafeConferenceKey=messages.StringField(1),
+    duration=messages.IntegerField(2),
+)
+
 SPKR_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     speakerKey=messages.StringField(1),
@@ -277,8 +283,8 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(message_types.VoidMessage, ConferenceForms,
-            path='getConferencesCreated',
-            http_method='POST', name='getConferencesCreated')
+            path='conferences_created',
+            http_method='GET', name='getConferencesCreated')
     def getConferencesCreated(self, request):
         """Return conferences created by user."""
         # make sure user is authed
@@ -346,8 +352,7 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(ConferenceQueryForms, ConferenceForms,
-            path='queryConferences',
-            http_method='POST',
+            path='query_conferences', http_method='POST',
             name='queryConferences')
     def queryConferences(self, request):
         """Query for conferences."""
@@ -497,7 +502,7 @@ class ConferenceApi(remote.Service):
     #
 
     @endpoints.method(SESS_POST_REQUEST, SessionForm,
-            path='conference/{websafeConferenceKey}/session',
+            path='conference_session/{websafeConferenceKey}',
             http_method='POST', name='createSession')
     def createSession(self, request):
         """Create new session in conference."""
@@ -513,7 +518,7 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(CONF_GET_REQUEST, SessionForms,
-            path='conference/{websafeConferenceKey}/sessions',
+            path='conference_sessions/{websafeConferenceKey}',
             http_method='GET', name='getConferenceSessions')
     def getConferenceSessions(self, request):
         """Return conference Sessions (by websafeConferenceKey)."""
@@ -537,7 +542,8 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(SESS_TYPE_GET_REQUEST, SessionForms,
-            path='conference/{websafeConferenceKey}/{typeOfSession}',
+            path='conference_sessions_by_type/\
+                {websafeConferenceKey}/{typeOfSession}',
             http_method='GET', name='getConferenceSessionsByType')
     def getConferenceSessionsByType(self, request):
         """Return conference Sessions of the requested type (by
@@ -565,11 +571,10 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(SPKR_GET_REQUEST, SessionForms,
-            path='session/{speakerKey}',
+            path='sessions_by_speaker/{speakerKey}',
             http_method='GET', name='getSessionsBySpeaker')
     def getSessionsBySpeaker(self, request):
-        """Return Sessions with the requested requested Speaker (by
-        speakerKey (email))."""
+        """Return Sessions with the requestes Speaker (by speakerKey)."""
         # make sure user is authed
         user = endpoints.get_current_user()
         if not user:
@@ -584,7 +589,32 @@ class ConferenceApi(remote.Service):
         sessions = Session.query()
         sessions = sessions.filter(
             Session.speakerKeys == request.speakerKey)
-        # return set of SessionForm objects per Speaker
+        # return set of SessionForm objects per Session
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+
+    @endpoints.method(SESS_DUR_GET_REQUEST, SessionForms,
+            path='sessions_by_duration/{websafeConferenceKey}/{duration}',
+            http_method='GET', name='getSessionsUnderDuration')
+    def getSessionsUnderDuration(self, request):
+        """Return Sessions less than or equal to the specified duration."""
+        # make sure user is authed
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No Conference found with key: %s' % \
+                request.websafeConferenceKey)
+
+        sessions = Session.query()
+        sessions = sessions.filter(
+            Session.duration <= request.duration)
+        # return set of SessionForm objects per Session
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -761,7 +791,7 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(message_types.VoidMessage, StringMessage,
-            path='conference/announcement/get',
+            path='conference_announcement',
             http_method='GET', name='getAnnouncement')
     def getAnnouncement(self, request):
         """Return Announcement from memcache."""
@@ -812,7 +842,7 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(CONF_GET_REQUEST, SessionForms,
-            path='conference/{websafeConferenceKey}/wishlist',
+            path='conference_wishlist/{websafeConferenceKey}',
             http_method='GET', name='getSessionsInWishlist')
     def getSessionsInWishlist(self, request):
         """Get list of sessions that user has added to wishlist."""
@@ -949,7 +979,7 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(CONF_GET_REQUEST, BooleanMessage,
-            path='conference/{websafeConferenceKey}',
+            path='conference_register/{websafeConferenceKey}',
             http_method='POST', name='registerForConference')
     def registerForConference(self, request):
         """Register user for selected conference."""
@@ -957,7 +987,7 @@ class ConferenceApi(remote.Service):
 
 
     @endpoints.method(CONF_GET_REQUEST, BooleanMessage,
-            path='conference/{websafeConferenceKey}',
+            path='conference_register/{websafeConferenceKey}',
             http_method='DELETE', name='unregisterFromConference')
     def unregisterFromConference(self, request):
         """Unregister user for selected conference."""
