@@ -48,10 +48,10 @@ You will have to submit your app ID, and text for the parts of the project that 
   - [x] [Define Endpoints methods][22]
     - [x] `addSessionToWishlist(SessionKey)`
     - [x] `getSessionsInWishlist()`
-- [ ] [Task 3: Work on indexes and queries][31]
-  - [ ] [Create indexes][32]
-  - [ ] [Come up with 2 additional queries][33]
-  - [ ] [Solve query related problem][34]
+- [x] [Task 3: Work on indexes and queries][31]
+  - [x] [Create indexes][32]
+  - [x] [Come up with 2 additional queries][33]
+  - [x] [Solve query related problem][34]
 - [ ] [Task 4: Add a Task][41]
   - [ ] [Define Endpoints methods][42]
     - [ ] `getFeaturedSpeaker()`
@@ -115,8 +115,6 @@ Make sure the indexes support the type of queries required by the new Endpoints 
 
 #### Come up with 2 additional queries
 
-Think about other types of queries that would be useful for this application. Describe the purpose of 2 new queries and write the code that would perform them.
-
 - `getConferenceAttendees(websafeConferenceKey)`
 Query for all users registered for a particular conference
 - `getSessionsUnderDuration(websafeConferenceKey, duration)`
@@ -125,6 +123,8 @@ Query for all sessions of a conference less than or equal to a specified duratio
 #### Solve the following query related problem
 
 Let's say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?
+
+This can be done with multiple inequality filters. Unfortunately, AppEngine Datastore has a limitation where inequality filters cannot be specified for more than one property. Therefore you must specify each inequality filter as a separate query and create a new list that appear in both query results. See `filterPlayground` for an example.
 
 ### Task 4: Add a Task
 

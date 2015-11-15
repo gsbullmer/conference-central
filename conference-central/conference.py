@@ -13,7 +13,7 @@ created by wesc on 2014 apr 21
 __author__ = 'wesc+api@google.com (Wesley Chun)'
 
 
-from datetime import datetime
+from datetime import datetime, date, time
 
 import endpoints
 from protorpc import messages
@@ -994,23 +994,20 @@ class ConferenceApi(remote.Service):
         return self._conferenceRegistration(request, reg=False)
 
 
-    @endpoints.method(message_types.VoidMessage, ConferenceForms,
+    @endpoints.method(message_types.VoidMessage, SessionForms,
             path='filterPlayground',
             http_method='GET', name='filterPlayground')
     def filterPlayground(self, request):
         """Filter Playground"""
-        q = Conference.query()
-        # field = "city"
-        # operator = "="
-        # value = "London"
-        # f = ndb.query.FilterNode(field, operator, value)
-        # q = q.filter(f)
-        q = q.filter(Conference.city=="London")
-        q = q.filter(Conference.topics=="Medical Innovations")
-        q = q.filter(Conference.month==6)
+        # create multiple inequality queries
+        q1 = Session.gql("WHERE typeOfSession != 'NOT_SPECIFIED'")
+        q2 = Session.gql("WHERE startTime <= TIME('19:00:00')")
 
-        return ConferenceForms(
-            items=[self._copyConferenceToForm(conf, "") for conf in q]
+        # create new list of items that appear in both lists
+        q3 = [q for q in q1 if q in q2]
+
+        return SessionForms(
+            items=[self._copySessionToForm(sess) for sess in q3]
         )
 
 
