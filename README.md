@@ -52,9 +52,9 @@ You will have to submit your app ID, and text for the parts of the project that 
   - [x] [Create indexes][32]
   - [x] [Come up with 2 additional queries][33]
   - [x] [Solve query related problem][34]
-- [ ] [Task 4: Add a Task][41]
-  - [ ] [Define Endpoints methods][42]
-    - [ ] `getFeaturedSpeaker()`
+- [x] [Task 4: Add a Task][41]
+  - [x] [Define Endpoints methods][42]
+    - [x] `getFeaturedSpeaker()`
 
 ### Task 1: Add Sessions to a Conference
 

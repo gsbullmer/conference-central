@@ -55,8 +55,9 @@ from utils import getUserId
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
-ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
-                    'are nearly sold out: %s')
+ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences \
+                    are nearly sold out: %s')
+MEMCACHE_FEATURED_SPEAKER_KEY = "FEATURED_SPEAKER"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 DEFAULTS = {
@@ -204,12 +205,13 @@ class ConferenceApi(remote.Service):
 
         # create Conference, send email to organizer confirming
         # creation of Conference & return (modified) ConferenceForm
-        Conference(**data).put()
+        conf = Conference(**data)
+        conf.put()
         taskqueue.add(params={'email': user.email(),
             'conferenceInfo': repr(request)},
             url='/tasks/send_confirmation_email'
         )
-        return request
+        return self._copyConferenceToForm(conf, request.organizerDisplayName)
 
 
     @ndb.transactional()
@@ -437,16 +439,21 @@ class ConferenceApi(remote.Service):
 
         # generate Profile Key based on user ID and Conference
         # ID based on Profile key get Conference key from ID
-        c_key = ndb.Key(Conference, request.websafeConferenceKey)
+        c_key = ndb.Key(urlsafe=request.websafeConferenceKey)
         s_id = Session.allocate_ids(size=1, parent=c_key)[0]
         s_key = ndb.Key(Session, s_id, parent=c_key)
         data['key'] = s_key
         data['organizerUserId'] = request.organizerUserId = user_id
-        data['conferenceKey'] = c_key.urlsafe()
+        data['conferenceKey'] = request.websafeConferenceKey
 
         # create Session & return (modified) SessionForm
         sess = Session(**data)
         sess.put()
+        taskqueue.add(
+            params={'conf_key': sess.conferenceKey,
+                    'speakers': sess.speakerKeys},
+            url='/tasks/set_featured_speaker'
+        )
         return self._copySessionToForm(sess)
 
 
@@ -796,6 +803,16 @@ class ConferenceApi(remote.Service):
     def getAnnouncement(self, request):
         """Return Announcement from memcache."""
         return StringMessage(data=memcache.get(MEMCACHE_ANNOUNCEMENTS_KEY) or "")
+
+# - - - Featured Speaker - - - - - - - - - - - - - - - - - - - -
+
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+            path='featured_speaker',
+            http_method='GET', name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        """Return Featured Speaker from memcache."""
+        return StringMessage(data=memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY)\
+            or "")
 
 
 # - - - Wishlist - - - - - - - - - - - - - - - - - - - -
