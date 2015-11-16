@@ -8,9 +8,9 @@ $Id$
 
 created by wesc on 2014 may 24
 
+__author__ = 'wesc+api@google.com (Wesley Chun)'
 """
 
-__author__ = 'wesc+api@google.com (Wesley Chun)'
 
 import webapp2
 from google.appengine.api import app_identity
@@ -23,6 +23,7 @@ from conference import MEMCACHE_FEATURED_SPEAKER_KEY
 
 from models import Session
 from models import Speaker
+
 
 class SetAnnouncementHandler(webapp2.RequestHandler):
     def get(self):
