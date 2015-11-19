@@ -45,17 +45,12 @@ class SetFeaturedSpeakerHandler(webapp2.RequestHandler):
         if sessions.count() > 1:
             # If there are more than one session with the same speaker,
             # format featured speaker and set it in memcache
-            featured_speakers = '%s will speak at %s during the\
-                following sessions: %s' % (
+            featured_speakers = '%s will speak at %s during the' \
+                'following sessions: %s' % (
                     spkr.displayName, conf.name,
                     (', '.join(sess.name for sess in sessions))
                 )
             memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, featured_speakers)
-        else:
-            # If there are no sessions with the same speaker,
-            # delete the memcache featured speaker entry
-            featured_speakers = ""
-            memcache.delete(MEMCACHE_FEATURED_SPEAKER_KEY)
 
         self.response.set_status(204)
 

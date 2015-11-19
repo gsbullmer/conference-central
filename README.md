@@ -90,9 +90,9 @@ Ideally, create the session as a child of the conference.
 
 #### Explain your design choices
 
-Session entities belong to a Conference object. Each has a name, highlights, list of speaker keys, a duration, a session type, session date, start time of the session, and user ID of the creator. The speaker keys should be email addresses since those are unique identifiers. Endpoints available allow a user to create a session, get all sessions of a conference via a websafe conference key, get all sessions of a conference of a certain type via a websafe conference key and type of session, and get all sessions by a certain speaker via speaker's email address.
+Session entities belong to a Conference object. Each has a name, highlights, list of speaker keys, a duration, a session type, session date, and start time of the session. The highlights property could be lengthy and doesn't need to be indexed, so it is a TextProperty. The duration property is the number of minutes the session will last, so it is an IntegerProperty. The speaker keys should be email addresses since those are unique identifiers. The typeOfSession property is limited to the TypeOfSession list, so its a StringProperty, but the SessionForm field is an EnumField tied to TypeOfSession class. The date property is only the date, so its a DateProperty. The startTime property is only the time, so its a TimeProperty. Endpoints available allow a user to create a session, get all sessions of a conference via a websafe conference key, get all sessions of a conference of a certain type via a websafe conference key and type of session, and get all sessions by a certain speaker via speaker's email address.
 
-Speakers are entities. Each contains the speaker's display name and email address. Endpoints available allow a user to get a speaker, and update an existing speaker's display name. When a user attempts to retrieve a speaker and it doesn't exist, one is created, setting the display name equal to the email address supplied.
+Speakers are entities. Each contains the speaker's display name and email address. Endpoints available allow a user to get a speaker, create a speaker, and update an existing speaker's display name and email.
 
 ### Task 2: Add Sessions to User Wishlist
 
